@@ -1,3 +1,9 @@
+# ------------------------------------------------------------------------------
+# This draws a whole load of charts based on the input data
+# Usage:
+# py .\dataset_evaluation.py .\data\ .\plots\
+# ------------------------------------------------------------------------------
+
 import argparse
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -7,7 +13,7 @@ import pandas as pd
 from data_source import *
 from pipeline import *
 from plot_utils import *
-from src.utils import StoreDictKeyPair
+from utils import StoreDictKeyPair
 
 IMAGE_TYPE_MAP = {
     (True, False, True): 'Unclassified Data',
