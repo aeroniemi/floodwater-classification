@@ -666,7 +666,6 @@ def save_current_run(study: optuna.study, experiment_folder: str, is_multicriter
         os.mkdir(trial_intermediate_folder)
     print(f'Found {len(study.trials)} trials. ')
     print(f'Potential intermediate values, which are to be saved in {trial_intermediate_folder}.')
-    print(f'Potential intermediate values, which are to be saved in {trial_intermediate_folder}.')
     dist_map: DistributionMap = {}
     if path.exists(trial_dist_file):
         try:
