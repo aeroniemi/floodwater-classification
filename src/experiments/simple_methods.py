@@ -171,6 +171,7 @@ def execute_grid_search_experiments(data_folder: str, experiment_base_folder: st
                                     timeout: Optional[int] = None,
                                     filters: Optional[List[str]] = None,
                                     redirect_output: bool = True,  
+                                    method: str = "GB-RF", 
                                     n_trials: Optional[int]=None, 
                                     **kwargs):
     ex_name = NAME + '_grid_search'
@@ -180,8 +181,8 @@ def execute_grid_search_experiments(data_folder: str, experiment_base_folder: st
         filter = trial.suggest_categorical('filter', all_filters, selected_choices=selected_filters, condition=True)
         # prefix with z so that it will be iterated last and we can thus maximise cache hits
         # [SAR, OPT, O3, S2, RGB, RGBN, HSV(RGB), HSV(O3), cNDWI, cAWEI, cAWEI+cNDWI, HSV(O3)+cAWEI+cNDWI, SAR_OPT, SAR_O3, SAR_S2, SAR_RGB, SAR_RGBN, SAR_HSV(RGB), SAR_HSV(O3), SAR_cNDWI, SAR_cAWEI, SAR_cAWEI+cNDWI, SAR_HSV(O3)+cAWEI+cNDWI]
-
-        feature_space = trial.suggest_categorical('feature_space', f_names[filter], condition=True)  # )
+        m = trial.suggest_categorical("method", [method])
+        feature_space = trial.suggest_categorical('z_feature_space', f_names[filter], condition=True)  # )
         num_leaves = None
         if method == 'GB-RF':
             boosting_type = trial.suggest_categorical('boosting_type', ['gbdt', 'dart', 'goss', 'rf'],
@@ -242,13 +243,13 @@ def execute_grid_search_experiments(data_folder: str, experiment_base_folder: st
             max_iter = trial.suggest_int('max_iter', 1, 1000, selected_choices=[20])
         else:
             raise NotImplementedError(f'Method {method} is not supported yet')
-        trial.leave_condition(['z_feature_space', 'method'])
+        trial.leave_condition(['z_feature_space'])
         if num_leaves is not None:
             return {'num_leaves': num_leaves}
 
 
     run_sacred_grid_search(experiment_base_folder, ex_name, pipeline(data_folder, cons_by_filter), config, seed, timeout=timeout,
-                           redirect_output=redirect_output, direction=optuna.study.StudyDirection.MAXIMIZE)
+                           redirect_output=redirect_output, direction=optuna.study.StudyDirection.MAXIMIZE, n_trials=n_trials)
 
 # TODO check best parameters
 def execute_final_experiments(data_folder: str, experiment_base_folder: str,
