@@ -170,7 +170,9 @@ def execute_grid_search_experiments(data_folder: str, experiment_base_folder: st
                                     use_datadings: bool = True, seed: Optional[int] = None,
                                     timeout: Optional[int] = None,
                                     filters: Optional[List[str]] = None,
-                                    redirect_output: bool = True):
+                                    redirect_output: bool = True,  
+                                    n_trials: Optional[int]=None, 
+                                    **kwargs):
     ex_name = NAME + '_grid_search'
     cons_by_filter, f_names, all_filters, selected_filters = default_feature_space_construction(data_folder, filters, use_datadings)
 
@@ -253,7 +255,8 @@ def execute_final_experiments(data_folder: str, experiment_base_folder: str,
                               use_datadings: bool = True, seed: Optional[int] = None,
                               timeout: Optional[int] = None,
                               filters: Optional[List[str]] = None,
-                              redirect_output: bool = True):
+                              redirect_output: bool = True, 
+                              n_trials: Optional[int]=None):
     ex_name = NAME + '_final'
     for split in [SPLIT_TEST, SPLIT_BOLIVIA]:
         cons_by_filter, f_names, all_filters, selected_filters = default_feature_space_construction(data_folder, filters,
@@ -356,7 +359,7 @@ def execute_final_experiments(data_folder: str, experiment_base_folder: str,
             run_sacred_grid_search(experiment_base_folder, ex_name+'_'+split,
                                    pipeline(data_folder, cons_by_filter, eval_split=split),
                                    config, seed, timeout=timeout,
-                                   redirect_output=redirect_output, direction=optuna.study.StudyDirection.MAXIMIZE)
+                                   redirect_output=redirect_output, direction=optuna.study.StudyDirection.MAXIMIZE, n_trials=n_trials)
         except TrialAbort:
             print('Execution was aborted. Trying next experiment!', file=sys.stderr)
             print(traceback.format_exc(), file=sys.stderr)

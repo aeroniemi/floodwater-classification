@@ -13,7 +13,9 @@ def execute_grid_search_experiments(data_folder: str, experiment_base_folder: st
                                     use_datadings: bool = True, seed: Optional[int] = None,
                                     timeout: Optional[int] = None,
                                     filters: Optional[List[str]] = None,
-                                    redirect_output: bool = True):
+                                    redirect_output: bool = True, 
+                                    n_trials: Optional[int]=None,
+                                    **kwargs):
     ex_name = NAME + '_grid_search'
     print('Constructing feature spaces.')
     cons_by_filter: Dict[str, Dict[str, Tuple[Any, Any]]] = {}
@@ -152,4 +154,4 @@ def execute_grid_search_experiments(data_folder: str, experiment_base_folder: st
         return res
 
     run_sacred_grid_search(experiment_base_folder, ex_name, main, config, seed, timeout=timeout,
-                           redirect_output=redirect_output, direction=optuna.study.StudyDirection.MAXIMIZE)
+                           redirect_output=redirect_output, direction=optuna.study.StudyDirection.MAXIMIZE, n_trials=n_trials)
