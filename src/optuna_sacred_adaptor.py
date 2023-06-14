@@ -935,7 +935,7 @@ def run_sacred_grid_search(experiment_base_folder: str, ex_name: str, main_fun: 
         study = optuna.create_study(sampler=sampler, study_name=ex_name, pruner=pruner, directions=direction)
     study = load_previous_run(study, experiment_folder)
     study.optimize(objective, gc_after_trial=True, catch=(TrialAbort,), timeout=timeout,
-                   callbacks=[callback])
+                   callbacks=[callback], n_trials=n_trials) # run the study
 
 def run_tpe_optimize(experiment_base_folder: str, ex_name: str, main_fun: Callable,
                            trial_config_fun: Callable, seed: Optional[int] = None,
