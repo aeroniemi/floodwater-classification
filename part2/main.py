@@ -66,12 +66,28 @@ def generate_feature_stack(image_name):
     # return stack as numpy-array
     return np.asarray(feature_stack_x), np.asarray(feature_stack_y).ravel(), meta
 
-feature_stack_x, feature_stack_y, meta = generate_feature_stack("Bolivia_23014")
+def handleNaN(fx, fy):
+    missing = fy==-1
+    validFy = np.delete(fy, missing, axis=0)
+    validFx = np.delete(fx, missing, axis=1)
+    return validFx, validFy, missing
 
+def rebuildShape(fy, mask):
+    res = fy.copy()
+    for i in range(len(mask)):
+        if mask[i] == True:
+            res = np.insert(res, i, -1)
+    return res
+
+feature_stack_x, feature_stack_y, meta = generate_feature_stack("Bolivia_290290")
+# print(feature_stack_x.shape, feature_stack_y.shape)
+feature_stack_x_filtered, feature_stack_y_filtered, mask = handleNaN(feature_stack_x, feature_stack_y)
+# print(feature_stack_x.shape, feature_stack_x_filtered.shape)
 classifier = HistGradientBoostingClassifier(max_depth=2, random_state=0)
-classifier.fit(feature_stack_x.T, feature_stack_y)
-res = classifier.predict(feature_stack_x.T) - 1 # we subtract 1 to make background = 0
-print("Got here")
-print(res.shape, res.reshape((512, 512)).shape)
+classifier.fit(feature_stack_x_filtered.T, feature_stack_y_filtered)
+res = classifier.predict(feature_stack_x_filtered.T)  # we subtract 1 to make background = 0
+print("Got here", res.shape)
+res2 = rebuildShape(res, mask)
+print(res2.shape, res2.reshape((512, 512)).shape)
 
-write_geotiff("./testq.tif",res.reshape((512, 512)),meta )
+write_geotiff("./again2_290290.tif",res2.reshape((512, 512)),meta )
