@@ -1,14 +1,25 @@
 {
-	"folders": [
-		{
-			"path": "."
-		}
+    "folders": [
+        {
+            "path": "."
+        }
     ],
     "settings": {
         "workbench.colorCustomizations": {
             "activityBar.background": "#07351A",
             "titleBar.activeBackground": "#0A4A25",
             "titleBar.activeForeground": "#F1FDF6"
-        }
+        },
+        "[python]": {
+            "editor.defaultFormatter": "ms-python.black-formatter",
+            "editor.formatOnSave": true,
+            "editor.codeActionsOnSave": {
+                "source.organizeImports": true
+            },
+        },
+        "isort.args": [
+            "--profile",
+            "black"
+        ],
     }
 }
