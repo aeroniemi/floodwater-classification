@@ -83,15 +83,18 @@ def load_image(image_name: str):
 def load_source(image_name, source):
     file_path = os.path.join(data_path, source[0], f"{image_name}_{source[1]}.tif")
     img, meta = read_geotiff(file_path)
-    if img.ndim > 2:  ## if multiband, add each band seporately as a feature
+    if img.ndim > 2:  ## if multiband put the bands at the end rather than the beginning
         img = np.transpose(img, (1, 2, 0))
     else:
-        img = np.reshape(img, img.shape + (1,))
-    # print(img.shape)
+        img = np.reshape(
+            img, img.shape + (1,)
+        )  # if single band then make it into a 2d array of length 1
     return img, meta
 
 
-def generate_feature_stack(image_name: str, x_features: list, y_features: list):
+def generate_feature_stack(
+    image_name: str, x_features: list, y_features: list = Feature.getMany(["QC"])
+):
     dem, s1, s2, lab, meta = load_image(image_name)
     feature_stack_x = []
     feature_stack_y = []
@@ -100,17 +103,18 @@ def generate_feature_stack(image_name: str, x_features: list, y_features: list):
         feature_stack_x.append(feature.access(dem, s1, s2, lab))
     for feature in y_features:
         feature_stack_y.append(feature.access(dem, s1, s2, lab))
-    print(list(map(lambda x: x.shape, feature_stack_x)))
 
     return np.asarray(feature_stack_x).T, np.asarray(feature_stack_y).T, meta
 
 
 def handleNaN(fx, fy):
-    missing_fy = np.array(fy == -1)
-    missing_fx = np.any(np.isnan(fx), axis=0)
+    missing_fy = np.any(fx == -1, axis=1)
+    missing_fx = np.any(np.isnan(fx), axis=1)
     mask = np.logical_or(missing_fx, missing_fy)
-    validFy = np.delete(fy, mask, axis=0)
-    validFx = np.delete(fx, mask, axis=1)
+    validFx = np.delete(fx, mask, axis=0)
+    validFy = np.delete(
+        fy, mask, axis=0
+    ).ravel()  # needs to be 1d array for classifier training
     return validFx, validFy, mask
 
 
@@ -150,21 +154,21 @@ def sigint_handler(signal, frame):
 signal.signal(signal.SIGINT, sigint_handler)
 
 
-def partial_fit(classifier: ClassifierMixin, classes: list, image: str):
-    feature_stack_x, feature_stack_y, meta = generate_feature_stack(image)
+def partial_fit(
+    classifier: ClassifierMixin, classes: list, image: str, x_features: list
+):
+    feature_stack_x, feature_stack_y, meta = generate_feature_stack(image, x_features)
     feature_stack_x_filtered, feature_stack_y_filtered, mask = handleNaN(
         feature_stack_x, feature_stack_y
     )
-    classifier.partial_fit(
-        feature_stack_x_filtered.T, feature_stack_y_filtered, classes
-    )
+    classifier.partial_fit(feature_stack_x_filtered, feature_stack_y_filtered, classes)
 
 
-def predict(classifier: ClassifierMixin, image: str):
-    feature_stack_x, feature_stack_y, meta = generate_feature_stack(image)
+def predict(classifier: ClassifierMixin, image: str, x_features: list):
+    feature_stack_x, feature_stack_y, meta = generate_feature_stack(image, x_features)
     feature_stack_x_filtered, feature_stack_y_filtered, mask = handleNaN(
         feature_stack_x, feature_stack_y
     )
-    predicted = classifier.predict(feature_stack_x_filtered.T)
+    predicted = classifier.predict(feature_stack_x_filtered)
     built = rebuildShape(predicted, mask)
     return built, feature_stack_y, meta
