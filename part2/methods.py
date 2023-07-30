@@ -113,7 +113,7 @@ def generate_feature_stack(
 
 
 def handleNaN(fx, fy):
-    missing_fy = np.any(fx == -1, axis=1)
+    missing_fy = np.any(fy == -1, axis=1)
     missing_fx = np.any(np.isnan(fx), axis=1)
     mask = np.logical_or(missing_fx, missing_fy)
     validFx = np.delete(fx, mask, axis=0)
