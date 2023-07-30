@@ -9,6 +9,7 @@ import sys
 
 import numpy as np
 from colored import fore, stylize
+from feature_spaces import *
 from osgeo import gdal
 from skimage.io import imread
 from sklearn.base import ClassifierMixin
@@ -71,35 +72,37 @@ def write_geotiff(path: str, arr, in_ds: gdal.Dataset):
     band.ComputeStatistics(False)
 
 
-def generate_feature_stack(image_name: str):
-    # print(f"Generating stack for {stylize(image_name, primary)}")
-    # The ravel() function turns a nD image into a 1-D image.
+def load_image(image_name: str):
+    dem, _ = load_source(image_name, IMAGE_DEM)
+    s1, _ = load_source(image_name, IMAGE_S1)
+    s2, _ = load_source(image_name, IMAGE_S2)
+    lab, meta = load_source(image_name, IMAGE_LAB)
+    return dem, s1, s2, lab, meta
+
+
+def load_source(image_name, source):
+    file_path = os.path.join(data_path, source[0], f"{image_name}_{source[1]}.tif")
+    img, meta = read_geotiff(file_path)
+    if img.ndim > 2:  ## if multiband, add each band seporately as a feature
+        img = np.transpose(img, (1, 2, 0))
+    else:
+        img = np.reshape(img, img.shape + (1,))
+    # print(img.shape)
+    return img, meta
+
+
+def generate_feature_stack(image_name: str, x_features: list, y_features: list):
+    dem, s1, s2, lab, meta = load_image(image_name)
     feature_stack_x = []
     feature_stack_y = []
-    meta = None
-    for source in sources_x:
-        file_path = os.path.join(data_path, source[1], f"{image_name}_{source[2]}.tif")
-        img, m = read_geotiff(file_path)
-        meta = m
-        # print(f"    Loading {source[0]}")
-        if img.ndim > 2:  ## if multiband, add each band seporately as a feature
-            tr = np.transpose(img, (1, 2, 0))
 
-            for band in range(tr.shape[-1]):
-                feature_stack_x.append(tr[..., band].ravel())
-        else:
-            feature_stack_x.append(img.ravel())
+    for feature in x_features:
+        feature_stack_x.append(feature.access(dem, s1, s2, lab))
+    for feature in y_features:
+        feature_stack_y.append(feature.access(dem, s1, s2, lab))
+    print(list(map(lambda x: x.shape, feature_stack_x)))
 
-    for source in sources_y:
-        file_path = os.path.join(data_path, source[1], f"{image_name}_{source[2]}.tif")
-        img = imread(file_path)
-        # print(f"    Loading {source[0]}")
-        # img = rr.astype('float')
-        # img[img == -1] = None
-        feature_stack_y.append(img.ravel())
-    # print(feature_stack_x.shape)
-    # return stack as numpy-array
-    return np.asarray(feature_stack_x), np.asarray(feature_stack_y).ravel(), meta
+    return np.asarray(feature_stack_x).T, np.asarray(feature_stack_y).T, meta
 
 
 def handleNaN(fx, fy):

@@ -1,8 +1,10 @@
-IMAGE_DEM = ("./dem/", "dem")
-IMAGE_S1 = ("./S1Hand/", "S1Hand")
-IMAGE_S2 = ("./S2Hand/", "S2Hand")
-IMAGE_LAB = ("./label/", "LabelHand")
+IMAGE_DEM = ("./dem/", "dem", "dem")
+IMAGE_S1 = ("./S1Hand/", "S1Hand", "s1")
+IMAGE_S2 = ("./S2Hand/", "S2Hand", "s2")
+IMAGE_LAB = ("./label/", "LabelHand", "lab")
 DATA_PATH = "../src/downloaded-data/"
+
+import numpy as np
 
 
 class Feature:
@@ -12,17 +14,32 @@ class Feature:
         self.name = name
         Feature.dict[self.name] = self
 
+    def __str__(self):
+        return f"{self.__class__.__name__}: {self.getName()}"
+
+    def __repr__(self):
+        return self.__str__()
+
     def delete(self):
         del Feature.dict[self.name]
 
     def get(name: str):
         return Feature.dict[name] or False
 
+    def getMany(features):
+        return list(map(Feature.get, features))
+
     def list():
         return Feature.dict or False
 
-    def access(name: str, dem, s1, s2, lab):
+    def prepare(dem, s1, s2, lab):
         raise NotImplementedError
+
+    def access(self, dem, s1, s2, lab):
+        # print(dem.shape)
+        layer = self.prepare(dem, s1, s2, lab)
+        # print(f"15: {layer.shape}")
+        return layer.ravel()
 
     def getName(self):
         return self.name
@@ -33,6 +50,13 @@ class Feature:
     def getBand(self):
         raise NotImplementedError
 
+    def getValues(dem, s1, s2, lab):
+        def miniGet(name):
+            feature = Feature.get(name)
+            return feature.access(dem, s1, s2, lab)
+
+        return miniGet
+
 
 class RawFeature(Feature):
     def __init__(self, name: str, image: tuple, band: int):
@@ -40,16 +64,16 @@ class RawFeature(Feature):
         self.image = image
         self.band = band
 
-    def access(self, dem, s1, s2, lab):
-        match self.image:
+    def prepare(self, dem, s1, s2, lab):
+        match self.image[2]:
             case "dem":
-                return dem
+                return dem[:, :, 0]
             case "s1":
-                return s1[:, self.band]
+                return s1[:, :, self.band]
             case "s2":
-                return s2[:, self.band]
+                return s2[:, :, self.band]
             case "lab":
-                return lab
+                return lab[:, :, 0]
 
     def getImage(self):
         return self.image
@@ -63,8 +87,8 @@ class CompositeFeature(Feature):
         super().__init__(name)
         self.accessor = accessor
 
-    def access(self, dem, s1, s2, lab):
-        return self.accessor(Feature.get)
+    def prepare(self, dem, s1, s2, lab):
+        return self.accessor(Feature.getValues(dem, s1, s2, lab))
 
 
 RawFeature(name="DEM", image=IMAGE_DEM, band=0)
@@ -83,31 +107,26 @@ RawFeature(name="OPT_SWIR2", image=IMAGE_S2, band=12)
 RawFeature(name="QC", image=IMAGE_LAB, band=0)
 
 CompositeFeature(
+    name="compositeTest",
+    accessor=lambda r: r("OPT_R") * 10,
+)
+CompositeFeature(
     name="NDWI",
-    accessor=lambda r: (r["OPT_G"] - r["OPT_N"]) / (r["OPT_G"] + r["OPT_N"]),
+    accessor=lambda r: (r("OPT_G") - r("OPT_N")) / (r("OPT_G") + r("OPT_N")),
 )
 CompositeFeature(
     name="AWEI",
-    accessor=lambda r: 4 * (r["OPT_G"] - r["OPT_SWIR1"])
-    - 0.25 * (r["OPT_N"] + 11 * r["OPT_SWIR2"]),
+    accessor=lambda r: 4 * (r("OPT_G") - r("OPT_SWIR1"))
+    - 0.25 * (r("OPT_N") + 11 * r("OPT_SWIR2")),
 )
 CompositeFeature(
     name="AEWISH",
-    accessor=lambda r: r["OPT_B"]
-    + (5 / 2) * r["OPT_G"]
-    - 1.5 * (r["OPT_N"] + r["OPT_SWIR1"])
-    - r["OPT_SWIR2"] / 4,
+    accessor=lambda r: r("OPT_B")
+    + (5 / 2) * r("OPT_G")
+    - 1.5 * (r("OPT_N") + r("OPT_SWIR1"))
+    - r("OPT_SWIR2") / 4,
 )
 CompositeFeature(
     name="MNDWI",
-    accessor=lambda r: (r["OPT_G"] - r["OPT_SWIR1"]) / (r["OPT_G"] + r["OPT_SWIR1"]),
-)
-
-
-print(
-    f"""Testing features
-      DEM: {Feature.get("DEM").getName()}
-      MNDWI: {Feature.get("MNDWI").getName()}
-      
-      """
+    accessor=lambda r: (r("OPT_G") - r("OPT_SWIR1")) / (r("OPT_G") + r("OPT_SWIR1")),
 )
