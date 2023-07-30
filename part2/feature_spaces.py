@@ -5,6 +5,7 @@ IMAGE_LAB = ("./label/", "LabelHand", "lab")
 DATA_PATH = "../src/downloaded-data/"
 
 import numpy as np
+from skimage.color import rgb2hsv
 
 
 class Feature:
@@ -108,11 +109,33 @@ RawFeature(name="QC", image=IMAGE_LAB, band=0)
 
 CompositeFeature(
     name="compositeTest",
-    accessor=lambda r: r("OPT_R") * 10,
+    accessor=lambda r: print(*r("OPT_G")),
 )
 CompositeFeature(
     name="NDWI",
     accessor=lambda r: (r("OPT_G") - r("OPT_N")) / (r("OPT_G") + r("OPT_N")),
+)
+
+
+def hsvrgb(r):
+    hsv = rgb2hsv(np.array(r("RGB")).T)
+    return hsv[:, 0], hsv[:, 1], hsv[:, 2]
+
+
+def hsvo3(r):
+    hsv = rgb2hsv(np.array(r("O3")).T)
+    return hsv[:, 0], hsv[:, 1], hsv[:, 2]
+
+
+CompositeFeature(
+    name="HSV(RGB)",
+    accessor=hsvrgb,
+)
+CompositeFeature(name="RGB", accessor=lambda r: (r("OPT_R"), r("OPT_G"), r("OPT_B")))
+CompositeFeature(name="O3", accessor=lambda r: (r("OPT_SWIR2"), r("OPT_N"), r("OPT_R")))
+CompositeFeature(
+    name="HSV(O3)",
+    accessor=hsvo3,
 )
 CompositeFeature(
     name="AWEI",
@@ -129,4 +152,22 @@ CompositeFeature(
 CompositeFeature(
     name="MNDWI",
     accessor=lambda r: (r("OPT_G") - r("OPT_SWIR1")) / (r("OPT_G") + r("OPT_SWIR1")),
+)
+CompositeFeature(name="cAWEI", accessor=lambda r: (r("AWEI"), r("AWEISH")))
+CompositeFeature(name="cNDWI", accessor=lambda r: (r("NDWI"), r("MNDWI")))
+CompositeFeature(name="SAR", accessor=lambda r: (r("SAR_VV"), r("SAR_VH")))
+CompositeFeature(
+    name="OPT",
+    accessor=lambda r: (
+        r("OPT_R"),
+        r("OPT_G"),
+        r("OPT_B"),
+        r("OPT_N"),
+        r("OPT_RE1"),
+        r("OPT_RE2"),
+        r("OPT_RE3"),
+        r("OPT_NNIR"),
+        r("OPT_SWIR1"),
+        r("OPT_SWIR2"),
+    ),
 )
