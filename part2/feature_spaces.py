@@ -39,7 +39,7 @@ class Feature:
         # print(dem.shape)
         layer = self.prepare(dem, s1, s2, lab)
         # print(f"15: {layer.shape}")
-        return layer.ravel()
+        return layer
 
     def getName(self):
         return self.name

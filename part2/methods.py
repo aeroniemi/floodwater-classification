@@ -100,10 +100,15 @@ def generate_feature_stack(
     feature_stack_y = []
 
     for feature in x_features:
-        feature_stack_x.append(feature.access(dem, s1, s2, lab))
+        f = feature.access(dem, s1, s2, lab)
+        if type(f) == tuple:
+            for minifeature in f:
+                feature_stack_x.append(minifeature.ravel())
+        else:
+            feature_stack_x.append(f.ravel())
     for feature in y_features:
-        feature_stack_y.append(feature.access(dem, s1, s2, lab))
-
+        feature_stack_y.append(feature.access(dem, s1, s2, lab).ravel())
+    # print(list(map(lambda x: x.shape, feature_stack_y)))
     return np.asarray(feature_stack_x).T, np.asarray(feature_stack_y).T, meta
 
 
