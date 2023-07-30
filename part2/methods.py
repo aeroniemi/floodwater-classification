@@ -169,6 +169,24 @@ def partial_fit(
     classifier.partial_fit(feature_stack_x_filtered, feature_stack_y_filtered, classes)
 
 
+def full_fit(classifier: ClassifierMixin, images: list, x_features: list):
+    feature_stack_all_x = []
+    feature_stack_all_y = []
+    for image in images:
+        feature_stack_x, feature_stack_y, meta = generate_feature_stack(
+            image, x_features
+        )
+        feature_stack_x_filtered, feature_stack_y_filtered, _ = handleNaN(
+            feature_stack_x, feature_stack_y
+        )
+        feature_stack_all_x.append(feature_stack_x_filtered)
+        feature_stack_all_y.append(feature_stack_y_filtered)
+    arr_x = np.concatenate(feature_stack_all_x)
+    arr_y = np.concatenate(feature_stack_all_y)
+    print(arr_x.shape)
+    classifier.fit(feature_stack_x_filtered, feature_stack_y_filtered)
+
+
 def predict(classifier: ClassifierMixin, image: str, x_features: list):
     feature_stack_x, feature_stack_y, meta = generate_feature_stack(image, x_features)
     feature_stack_x_filtered, feature_stack_y_filtered, mask = handleNaN(
