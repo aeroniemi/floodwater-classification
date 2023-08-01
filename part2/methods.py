@@ -33,9 +33,14 @@ sources_y = [
 ]
 data_path = "../src/downloaded-data/"
 
+
 # ===========================================================================
 #                            Functions
 # ===========================================================================
+def load_file_list(path: str):
+    with open(path, "r") as file:
+        data = file.read()
+        return data.split("\n")
 
 
 def read_geotiff(path: str):
