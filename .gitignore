@@ -12,3 +12,5 @@
 *.xml
 *.keys
 *.npz
+/src/*
+*/sen1floods11/*
