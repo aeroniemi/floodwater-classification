@@ -6,13 +6,19 @@ import os
 import re
 import signal
 import sys
+import functools
 
+from skimage.transform import resize
 import numpy as np
 from colored import fore, stylize
 from feature_spaces import *
 from osgeo import gdal
 from skimage.io import imread
 from sklearn.base import ClassifierMixin
+from alive_progress import alive_it, alive_bar
+from statistics import mean
+from sklearn import config_context
+import lightgbm
 
 # ===========================================================================
 #                            CLI Colours
@@ -124,13 +130,16 @@ def generate_feature_stack(
     feature_stack_x = []
     feature_stack_y = []
 
+    def extract(feature):
+        if type(feature) == np.ndarray:  # it's a band
+            # print(feature.shape)
+            feature_stack_x.append(feature.ravel())
+        else:
+            return [extract(f) for f in feature]
+
     for feature in x_features:
         f = feature.access(dem, s1, s2, lab)
-        if type(f) == tuple:
-            for minifeature in f:
-                feature_stack_x.append(minifeature.ravel())
-        else:
-            feature_stack_x.append(f.ravel())
+        extract(f)
     for feature in y_features:
         feature_stack_y.append(feature.access(dem, s1, s2, lab).ravel())
     # print(list(map(lambda x: x.shape, feature_stack_y)))
@@ -159,13 +168,15 @@ def rebuildShape(fy, mask):
 def iou(real, predicted):
     real = np.delete(real, -1)
     predicted = np.delete(predicted, -1)
+    assert real.size == predicted.size
     length = real.size
-    tp = np.sum((real == 1) & (predicted == 1)) / length
-    fp = np.sum((real == 0) & (predicted == 1)) / length
-    tn = np.sum((real == 0) & (predicted == 0)) / length
-    fn = np.sum((real == 1) & (predicted == 0)) / length
+    tp = np.sum((real == 1) & (predicted == 1)) + 1 / length
+    fp = np.sum((real == 0) & (predicted == 1)) + 1 / length
+    tn = np.sum((real == 0) & (predicted == 0)) + 1 / length
+    fn = np.sum((real == 1) & (predicted == 0)) + 1 / length
     ioures = tp / (tp + fp + fn)
-    return ioures
+    accuracyres = (tp + tn) / (tp + tn + fp + fn)
+    return ioures, accuracyres
 
 
 def pathsToTitle(paths: list):
@@ -178,7 +189,7 @@ def filterPaths(folder: str, filter: str):
 
 def sigint_handler(signal, frame):
     print(stylize("User interrupted operations", error))
-    sys.exit(0)
+    sys.exit(10)
 
 
 signal.signal(signal.SIGINT, sigint_handler)
@@ -197,7 +208,53 @@ def partial_fit(
 def full_fit(classifier: ClassifierMixin, images: list, x_features: list):
     feature_stack_all_x = []
     feature_stack_all_y = []
-    for image in images:
+    for image in (bar := alive_it(images, title="Loading Training Data")):
+        bar.text(image)
+        feature_stack_x, feature_stack_y, meta = generate_feature_stack(
+            image, x_features
+        )
+        feature_stack_x_filtered, feature_stack_y_filtered, _ = handleNaN(
+            feature_stack_x, feature_stack_y
+        )
+        feature_stack_all_x.append(feature_stack_x_filtered)
+        feature_stack_all_y.append(feature_stack_y_filtered)
+    with alive_bar(3, title="Fitting") as bar:
+        bar.text("Concat X")
+        arr_x = np.concatenate(feature_stack_all_x)
+        bar()
+        bar.text("Concat y")
+        arr_y = np.concatenate(feature_stack_all_y)
+        bar()
+        bar.text("Fit Classifier")
+        classifier.fit(arr_x, arr_y)
+        bar()
+        bar.text("Complete")
+
+
+def generate_dataset(images: list, x_features: list):
+    feature_stack_all_x = []
+    feature_stack_all_y = []
+    for image in (bar := alive_it(images, title="Loading Data")):
+        bar.text(image)
+        feature_stack_x, feature_stack_y, meta = generate_feature_stack(
+            image, x_features
+        )
+        feature_stack_x_filtered, feature_stack_y_filtered, _ = handleNaN(
+            feature_stack_x, feature_stack_y
+        )
+        if feature_stack_y_filtered.size > 0:
+            feature_stack_all_x.append(feature_stack_x_filtered)
+            feature_stack_all_y.append(feature_stack_y_filtered)
+    arr_x = np.concatenate(feature_stack_all_x)
+    arr_y = np.concatenate(feature_stack_all_y)
+    return arr_x, arr_y, feature_stack_all_x, feature_stack_all_y
+
+
+def create_gbm_dataset(images: list, x_features: list):
+    feature_stack_all_x = []
+    feature_stack_all_y = []
+    for image in (bar := alive_it(images, title="Loading Training Data")):
+        bar.text(image)
         feature_stack_x, feature_stack_y, meta = generate_feature_stack(
             image, x_features
         )
@@ -208,8 +265,8 @@ def full_fit(classifier: ClassifierMixin, images: list, x_features: list):
         feature_stack_all_y.append(feature_stack_y_filtered)
     arr_x = np.concatenate(feature_stack_all_x)
     arr_y = np.concatenate(feature_stack_all_y)
-    print(arr_x.shape)
-    classifier.fit(feature_stack_x_filtered, feature_stack_y_filtered)
+    dataset = lightgbm.Dataset(arr_x, label=arr_y)
+    return dataset, x_features
 
 
 def predict(classifier: ClassifierMixin, image: str, x_features: list):
@@ -217,6 +274,38 @@ def predict(classifier: ClassifierMixin, image: str, x_features: list):
     feature_stack_x_filtered, feature_stack_y_filtered, mask = handleNaN(
         feature_stack_x, feature_stack_y
     )
-    predicted = classifier.predict(feature_stack_x_filtered)
+    if feature_stack_x_filtered.shape[0] == 0:
+        raise Exception(f"No valid label, cannot predict: {image}")
+    with config_context(assume_finite=True):
+        predicted = classifier.predict(feature_stack_x_filtered)
     built = rebuildShape(predicted, mask)
     return built, feature_stack_y, meta
+
+
+def calc_mean_iou(classifier, images, x_features):
+    ious = []
+    acc = []
+    for image in (bar := alive_it(images, title="Predicting")):
+        bar.text(image)
+        try:
+            img, label, meta = predict(classifier, image, x_features)
+            iour, accuracyr = iou(img, label)
+            ious.append(iour)
+            acc.append(accuracyr)
+        except Exception:
+            pass
+    return mean(ious), mean(acc)
+
+
+def calc_mean_iou_stack(classifier, x, y):
+    ious = []
+    acc = []
+    for i in (bar := alive_it(range(len(x)), title="Predicting")):
+        try:
+            img = classifier.predict(x[i])
+            iour, accuracyr = iou(img, y[i])
+            ious.append(iour)
+            acc.append(accuracyr)
+        except Exception:
+            pass
+    return mean(ious), mean(acc)
