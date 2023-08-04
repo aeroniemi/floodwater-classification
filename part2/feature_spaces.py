@@ -113,18 +113,19 @@ CompositeFeature(
 )
 CompositeFeature(
     name="NDWI",
-    accessor=lambda r: (r("OPT_G") - r("OPT_N")) / (r("OPT_G") + r("OPT_N")),
+    accessor=lambda r: (r("OPT_G") - r("OPT_N"))
+    + 1e-20 / (r("OPT_G") + r("OPT_N") + 1e-20),
 )
 
 
 def hsvrgb(r):
     hsv = rgb2hsv(np.array(r("RGB")).T)
-    return hsv[:, 0], hsv[:, 1], hsv[:, 2]
+    return hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
 
 
 def hsvo3(r):
     hsv = rgb2hsv(np.array(r("O3")).T)
-    return hsv[:, 0], hsv[:, 1], hsv[:, 2]
+    return hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
 
 
 CompositeFeature(
@@ -143,7 +144,7 @@ CompositeFeature(
     - 0.25 * (r("OPT_N") + 11 * r("OPT_SWIR2")),
 )
 CompositeFeature(
-    name="AEWISH",
+    name="AWEISH",
     accessor=lambda r: r("OPT_B")
     + (5 / 2) * r("OPT_G")
     - 1.5 * (r("OPT_N") + r("OPT_SWIR1"))
@@ -151,7 +152,8 @@ CompositeFeature(
 )
 CompositeFeature(
     name="MNDWI",
-    accessor=lambda r: (r("OPT_G") - r("OPT_SWIR1")) / (r("OPT_G") + r("OPT_SWIR1")),
+    accessor=lambda r: (r("OPT_G") - r("OPT_SWIR1") + 1e-20)
+    / (r("OPT_G") + r("OPT_SWIR1") + 1e-20),
 )
 CompositeFeature(name="cAWEI", accessor=lambda r: (r("AWEI"), r("AWEISH")))
 CompositeFeature(name="cNDWI", accessor=lambda r: (r("NDWI"), r("MNDWI")))
@@ -170,4 +172,26 @@ CompositeFeature(
         r("OPT_SWIR1"),
         r("OPT_SWIR2"),
     ),
+)
+
+CompositeFeature(name="RGBN", accessor=lambda r: (r("RGB"), r("OPT_N")))
+CompositeFeature(name="cAWEI+cNDWI", accessor=lambda r: (r("cAWEI"), r("cNDWI")))
+CompositeFeature(
+    name="HSV(O3)+cAWEI+cNDWI",
+    accessor=lambda r: (r("HSV(O3)"), r("cAWEI"), r("cNDWI")),
+)
+CompositeFeature(name="SAR_OPT", accessor=lambda r: (r("SAR"), r("OPT")))
+CompositeFeature(name="SAR_O3", accessor=lambda r: (r("SAR"), r("O3")))
+CompositeFeature(name="SAR_RGB", accessor=lambda r: (r("SAR"), r("RGB")))
+CompositeFeature(name="SAR_RGBN", accessor=lambda r: (r("SAR"), r("RGBN")))
+CompositeFeature(name="SAR_HSV(RGB)", accessor=lambda r: (r("SAR"), r("HSV(RGB)")))
+CompositeFeature(name="SAR_HSV(O3)", accessor=lambda r: (r("SAR"), r("HSV(O3)")))
+CompositeFeature(name="SAR_cNDWI", accessor=lambda r: (r("SAR"), r("cNDWI")))
+CompositeFeature(name="SAR_cAWEI", accessor=lambda r: (r("SAR"), r("cAWEI")))
+CompositeFeature(
+    name="SAR_cAWEI+cNDWI", accessor=lambda r: (r("SAR"), r("cAWEI"), r("cNDWI"))
+)
+CompositeFeature(
+    name="SAR_HSV(O3)+cAWEI+cNDWI",
+    accessor=lambda r: (r("SAR"), r("HSV(O3)"), r("cAWEI+cNDWI")),
 )
