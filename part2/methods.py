@@ -87,6 +87,14 @@ def load_image(image_name: str):
 
 def load_source(image_name, source):
     file_path = os.path.join(data_path, source[0], f"{image_name}_{source[1]}.tif")
+    if not os.path.isfile(file_path):
+        print(f"File not found:", file_path)
+        raise FileNotFoundError()
+    try:
+        assert len(image_name) > 0
+    except:
+        print("Invalid image name to load_source")
+        raise ValueError()
     img, meta = read_geotiff(file_path)
     if img.ndim > 2:  ## if multiband put the bands at the end rather than the beginning
         img = np.transpose(img, (1, 2, 0))
@@ -94,6 +102,18 @@ def load_source(image_name, source):
         img = np.reshape(
             img, img.shape + (1,)
         )  # if single band then make it into a 2d array of length 1
+    # check image shape is valid
+    try:
+        assert img.shape[0] == 512
+        assert img.shape[1] == 512
+        assert img.shape[2] >= 1
+    except:  # some of the DEM isn't the right size because reasons (normally 511*512 or similar), we can just pretend that isn't a thing
+        # print(
+        #     f"Invalid shape: {image_name}_{source[1]}.tif:",
+        #     img.shape,
+        # )
+        img = resize(img, (512, 512), mode="reflect")
+        # print(img.shape)
     return img, meta
 
 
