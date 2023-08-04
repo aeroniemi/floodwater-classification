@@ -40,7 +40,7 @@ data_path = "../src/downloaded-data/"
 def load_file_list(path: str):
     with open(path, "r") as file:
         data = file.read()
-        return data.split("\n")
+        return [i for i in data.split("\n") if i]
 
 
 def read_geotiff(path: str):
