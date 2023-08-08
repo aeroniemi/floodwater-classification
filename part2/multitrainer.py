@@ -13,6 +13,10 @@ import lightgbm
 import optuna
 import os
 from sklearn.pipeline import make_pipeline
+from sklearn.discriminant_analysis import (
+    LinearDiscriminantAnalysis,
+    QuadraticDiscriminantAnalysis,
+)
 
 # ===========================================================================
 #                            User editable settings
@@ -104,6 +108,34 @@ def SGDObjective(trial: optuna.Trial):
     mh.full_fit(classifier, train_images, x_features)
     iou = mh.calc_mean_iou(classifier, valid_images, x_features)
     return iou
+
+
+def NBObjective(trial: optuna.Trial):
+    classifier = GaussianNB()
+    mh.full_fit(classifier, train_images, x_features)
+    iou = mh.calc_mean_iou(classifier, valid_images, x_features)
+    return iou
+
+
+def LDAObjective(trial: optuna.Trial):
+    trial.suggest_float("shrinkage", 0, 10, 0.1)
+    classifier = LinearDiscriminantAnalysis(**trial.params)
+    mh.full_fit(classifier, train_images, x_features)
+    mean_iou, _ = mh.calc_mean_iou(classifier, valid_images, x_features)
+    total_iou, _ = mh.iou(classifier.predict(val_x), val_y)
+    return mean_iou, total_iou
+
+
+def QDAObjective(trial: optuna.Trial):
+    trial.suggest_categorical(
+        "reg_param", [0.0, 0.00001, 0.0001, 0.001, 0.01, 0.1, 0.5, 1, 2, 4, 8, 10]
+    )
+    classifier = QuadraticDiscriminantAnalysis(reg_param=0)
+    # classifier = LinearDiscriminantAnalysis(**trial.params)
+    mh.full_fit(classifier, train_images, x_features)
+    mean_iou, _ = mh.calc_mean_iou(classifier, valid_images, x_features)
+    total_iou, _ = mh.iou(classifier.predict(val_x), val_y)
+    return mean_iou, total_iou
 
 
 def GBRFEval(y_true, y_pred):
