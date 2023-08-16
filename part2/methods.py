@@ -371,3 +371,22 @@ def apply_mask(mask, fx=None, fy=None):
         return output_y
     else:
         return output_x
+
+
+def load_dataset(feature_space):
+    path = f"./data_cache/{feature_space}.npz"
+    data = np.load(path)
+    return data
+
+
+def load_masked_dataset(feature_space):
+    data = load_dataset(feature_space)
+    output = {}
+    for split in ["train", "val", "test", "bolivia"]:
+        x = data[f"{split}_x"]
+        y = data[f"{split}_y"]
+        mask = data[f"{split}_mask"]
+        fx, fy = apply_mask(mask, x, y)
+        output[f"{split}_x"] = fx
+        output[f"{split}_y"] = fy
+    return output

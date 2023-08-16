@@ -21,3 +21,20 @@ def generate_metrics(experiment_name):
     for split in splits:
         row = calculate_metrics(model, feature_space, run, output_data, target_data)
         df = df.append(row)
+
+
+def calc_total_iou(output, target):
+    target = np.delete(target, -1)
+    output = np.delete(output, -1)
+    assert target.size == output.size
+    print(target.shape, output.shape)
+    length = target.size
+    intersection = np.sum(output * target)
+    union = np.sum(target) + np.sum(output) - intersection
+    iou = (intersection + 0.0000001) / (union + 0.0000001)
+    assert 0 < iou < 1
+
+    correct = np.sum(output, where=(output == target))
+    accuracy = correct / length
+    assert 0 < accuracy < 1
+    return iou
