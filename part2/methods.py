@@ -167,18 +167,34 @@ def rebuildShape(fy, mask):
     return res
 
 
-def iou(real, predicted):
-    real = np.delete(real, -1)
-    predicted = np.delete(predicted, -1)
-    assert real.size == predicted.size
-    length = real.size
-    tp = np.sum((real == 1) & (predicted == 1)) + 1 / length
-    fp = np.sum((real == 0) & (predicted == 1)) + 1 / length
-    tn = np.sum((real == 0) & (predicted == 0)) + 1 / length
-    fn = np.sum((real == 1) & (predicted == 0)) + 1 / length
-    ioures = tp / (tp + fp + fn)
-    accuracyres = (tp + tn) / (tp + tn + fp + fn)
-    return ioures, accuracyres
+def iou(target, output):
+    target = np.delete(target, -1)
+    output = np.delete(output, -1)
+    assert target.size == output.size
+    length = target.size
+    intersection = np.sum(output * target)
+    union = np.sum(target) + np.sum(output) - intersection
+    iou = (intersection + 0.0000001) / (union + 0.0000001)
+    assert 0 < iou < 1
+
+    correct = np.sum(output, where=(output == target))
+    accuracy = correct / length
+    assert 0 < accuracy < 1
+    return iou, accuracy
+
+
+# def iou(real, predicted):
+#     real = np.delete(real, -1)
+#     predicted = np.delete(predicted, -1)
+#     assert real.size == predicted.size
+#     length = real.size
+#     tp = np.sum((real == 1) & (predicted == 1)) + 1 / length
+#     fp = np.sum((real == 0) & (predicted == 1)) + 1 / length
+#     tn = np.sum((real == 0) & (predicted == 0)) + 1 / length
+#     fn = np.sum((real == 1) & (predicted == 0)) + 1 / length
+#     ioures = tp / (tp + fp + fn)
+#     accuracyres = (tp + tn) / (tp + tn + fp + fn)
+#     return ioures, accuracyres
 
 
 def pathsToTitle(paths: list):
