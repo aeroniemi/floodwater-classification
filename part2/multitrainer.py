@@ -17,6 +17,7 @@ from sklearn.discriminant_analysis import (
     LinearDiscriminantAnalysis,
     QuadraticDiscriminantAnalysis,
 )
+from sklearn.svm import LinearSVC
 
 # ===========================================================================
 #                            User editable settings
@@ -103,7 +104,7 @@ print(list(map(lambda x: x.shape, val_x_stack)))
 val_x_stack = list(map(scaler.transform, val_x_stack))
 
 
-def SGDObjective(trial: optuna.Trial):
+def SGD(trial: optuna.Trial):
     trial.suggest_categorical(
         "loss", ["hinge", "log_loss", "modified_huber", "squared_hinge"]
     )
@@ -116,23 +117,23 @@ def SGDObjective(trial: optuna.Trial):
     return iou
 
 
-def NBObjective(trial: optuna.Trial):
+def NaiveBayes(trial: optuna.Trial):
     classifier = GaussianNB()
     mh.full_fit(classifier, train_images, x_features)
     iou = mh.calc_mean_iou(classifier, valid_images, x_features)
     return iou
 
 
-def LDAObjective(trial: optuna.Trial):
     trial.suggest_float("shrinkage", 0, 10, 0.1)
     classifier = LinearDiscriminantAnalysis(**trial.params)
     mh.full_fit(classifier, train_images, x_features)
     mean_iou, _ = mh.calc_mean_iou(classifier, valid_images, x_features)
     total_iou, _ = mh.iou(classifier.predict(val_x), val_y)
     return mean_iou, total_iou
+def LDA(trial: optuna.Trial):
 
 
-def QDAObjective(trial: optuna.Trial):
+def QDA(trial: optuna.Trial):
     trial.suggest_categorical(
         "reg_param", [0.0, 0.00001, 0.0001, 0.001, 0.01, 0.1, 0.5, 1, 2, 4, 8, 10]
     )
@@ -144,11 +145,7 @@ def QDAObjective(trial: optuna.Trial):
     return mean_iou, total_iou
 
 
-def GBRFEval(y_true, y_pred):
-    return ("iou", mh.iou(y_pred, y_true)[0], True)
-
-
-def GBRFObjective(trial: optuna.Trial):
+def GBRF(trial: optuna.Trial):
     if feature_space in ["OPT", "S2", "SAR_OPT", "SAR_S2", "SAR_HSV(O3)+cAWEI+cNDWI"]:
         leaf_choices = [32, 64, 128]
     elif feature_space in ["SAR", "cNDWI", "cAWEI"]:
@@ -216,27 +213,37 @@ def GBRFObjective(trial: optuna.Trial):
     print(f"IOU: {iour}, ACC: {accr}")
     return iour
 
-
-def output(study: optuna.Study, frozentrial: optuna.trial.FrozenTrial):
-    study.trials_dataframe(
-        attrs=(
-            "number",
-            "value",
-            "datetime_start",
-            "datetime_complete",
-            "duration",
-            "params",
-            "user_attrs",
-            "system_attrs",
-            "state",
-        )
-    ).to_csv(f"./{study.study_name}-trial-results.csv")
+    print(f"Accuracy: {accr}")
+    return iour, total_iou
 
 
-study = optuna.create_study(direction="maximize")
+def SVM(trial: optuna.Trial):
+    trial.suggest_categorical("loss", ["hinge", "squared_hinge"])
+    trial.set_user_attr("dual", False)
+    trial.set_user_attr("fit_intercept", False)
+    trial.suggest_categorical("class_weight", ["balanced", None])
+    trial.suggest_float("C", 0, 10)
+    classifier = LinearSVC(**trial.params)
+    classifier.fit(train_x, train_y)
+    output = mh.predict_to_file(classifier, trial, val_x)
+    total_iou, _ = mh.iou(output, val_y)
+    return total_iou
+
+
+# ===========================================================================
+#                            ! Select Model
+# ===========================================================================
+model = SVM
+
+
+study = optuna.create_study(
+    study_name=f"{model.__name__}-{feature_space}",
+    direction=optuna.study.StudyDirection.MAXIMIZE,
+)
+# study.set_metric_names(("total_iou"))
 study.optimize(
-    GBRFObjective,
-    n_trials=50,
+    model,
+    n_trials=10,
     gc_after_trial=True,
     callbacks=[mh.study_output],
 )

@@ -327,6 +327,15 @@ def calc_mean_iou_stack(classifier, x, y):
         except Exception:
             pass
     return mean(ious), mean(acc)
+
+
+def predict_to_file(classifier, trial: optuna.trial.Trial, dataset):
+    output = classifier.predict(dataset)
+    path = f"{output_path}/{trial.study.study_name}.{trial.number}.npy"
+    np.save(path, output)
+    return output
+
+
 def study_output(study: optuna.Study, frozentrial: optuna.trial.FrozenTrial):
     study.trials_dataframe(
         attrs=(
