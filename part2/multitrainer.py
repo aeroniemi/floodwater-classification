@@ -22,12 +22,18 @@ from sklearn.discriminant_analysis import (
 #                            User editable settings
 # ===========================================================================
 folder = "../src/downloaded-data/label/"
-train_images = mh.load_file_list("flood_train_data.csv")
-valid_images = mh.load_file_list("flood_valid_data.csv")
-tests_images = mh.load_file_list("flood_test_data.csv")
-boliv_images = mh.load_file_list("flood_bolivia_data.csv")
-boliv_images = mh.filterPaths(folder, "Bolivia*")
 classes = [-1, 0, 1]
+with alive_bar(4, title="Loading file lists") as bar:
+    train_images = mh.load_file_list("flood_train_data.csv")
+    bar()
+    valid_images = mh.load_file_list("flood_valid_data.csv")
+    bar()
+    tests_images = mh.load_file_list("flood_test_data.csv")
+    bar()
+    boliv_images = mh.load_file_list("flood_bolivia_data.csv")
+    bar()
+    # boliv_images = mh.filterPaths(folder, "Bolivia*")
+
 # classifier = SGDClassifier()
 # classifier = KNeighborsClassifier()
 # classifier = GaussianNB()
