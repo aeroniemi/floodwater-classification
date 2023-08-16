@@ -252,20 +252,16 @@ def full_fit(classifier: ClassifierMixin, images: list, x_features: list):
 def generate_dataset(images: list, x_features: list):
     feature_stack_all_x = []
     feature_stack_all_y = []
-    for image in (bar := alive_it(images, title="Loading Data")):
-        bar.text(image)
+    for image in images:
         feature_stack_x, feature_stack_y, meta = generate_feature_stack(
             image, x_features
         )
-        feature_stack_x_filtered, feature_stack_y_filtered, _ = handleNaN(
-            feature_stack_x, feature_stack_y
-        )
-        if feature_stack_y_filtered.size > 0:
-            feature_stack_all_x.append(feature_stack_x_filtered)
-            feature_stack_all_y.append(feature_stack_y_filtered)
-    arr_x = np.concatenate(feature_stack_all_x)
-    arr_y = np.concatenate(feature_stack_all_y)
-    return arr_x, arr_y, feature_stack_all_x, feature_stack_all_y
+        feature_stack_all_x.append(feature_stack_x)
+        feature_stack_all_y.append(feature_stack_y)
+    feature_stack_all_x = np.array(feature_stack_all_x)
+    feature_stack_all_y = np.array(feature_stack_all_y)
+    mask = generate_mask(feature_stack_all_x, feature_stack_all_y)
+    return feature_stack_all_x, feature_stack_all_y, mask
 
 
 def create_gbm_dataset(images: list, x_features: list):
@@ -350,3 +346,28 @@ def study_output(study: optuna.Study, frozentrial: optuna.trial.FrozenTrial):
             "state",
         )
     ).to_csv(f"{output_path}/{study.study_name}.csv")
+
+
+def generate_mask(fx, fy):
+    missing_fy = np.any(fy == -1, axis=1)
+    missing_fx = np.any(np.isnan(fx), axis=2)  # np.any(np.isnan(fx), axis=1)
+    mask = np.logical_or(missing_fx, missing_fy)
+    return mask
+
+
+def apply_mask(mask, fx=None, fy=None):
+    output_x = []
+    output_y = []
+    for img in range(mask.shape[0]):
+        if fx is not None:
+            output_x.append(np.delete(fx[img, :, :], mask[img, :], axis=0))
+        if fy is not None:
+            output_y.append(np.delete(fy[img, :, :], mask[img, :], axis=0))
+    output_x = np.array(output_x, dtype="object")
+    output_y = np.array(output_y, dtype="object")
+    if fx is not None and fy is not None:
+        return output_x, output_y
+    elif fy is not None:
+        return output_y
+    else:
+        return output_x
