@@ -19,6 +19,7 @@ from alive_progress import alive_it, alive_bar
 from statistics import mean
 from sklearn import config_context
 import lightgbm
+import optuna
 
 # ===========================================================================
 #                            CLI Colours
@@ -38,6 +39,7 @@ sources_y = [
     ("Label", "./label/", "LabelHand"),
 ]
 data_path = "../src/downloaded-data/"
+output_path = "./output"
 
 
 # ===========================================================================
@@ -309,3 +311,17 @@ def calc_mean_iou_stack(classifier, x, y):
         except Exception:
             pass
     return mean(ious), mean(acc)
+def study_output(study: optuna.Study, frozentrial: optuna.trial.FrozenTrial):
+    study.trials_dataframe(
+        attrs=(
+            "number",
+            "value",
+            "datetime_start",
+            "datetime_complete",
+            "duration",
+            "params",
+            "user_attrs",
+            "system_attrs",
+            "state",
+        )
+    ).to_csv(f"{output_path}/{study.study_name}.csv")

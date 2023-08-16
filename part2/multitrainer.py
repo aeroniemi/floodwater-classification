@@ -232,5 +232,5 @@ study.optimize(
     GBRFObjective,
     n_trials=50,
     gc_after_trial=True,
-    callbacks=[output],
+    callbacks=[mh.study_output],
 )
