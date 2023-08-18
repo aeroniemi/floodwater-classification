@@ -5,7 +5,7 @@ from feature_spaces import *
 from sklearn.linear_model import SGDClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import lightgbm
 import optuna
 import os
@@ -18,7 +18,22 @@ from sklearn.svm import LinearSVC
 from datetime import datetime
 
 
-feature_spaces = ["SAR", "SAR_HSV(O3)+cAWEI+cNDWI"]
+feature_spaces = [
+    # "SAR",
+    # "SAR_HSV(O3)",
+    # "SAR_cAWEI+cNDWI",
+    # "cAWEI",
+    # "cAWEI+cNDWI",
+    # "SAR_HSV(O3)+cAWEI+cNDWI",
+    # "DEM_SAR",
+    # "DEM_SAR_HSV(O3)+cAWEI+cNDWI",
+    # "HSV(O3)",
+    # "HSV(O3)+cAWEI+cNDWI"
+    # "LDEM_SAR",
+    # "SDEM+LDEM_SAR"
+    "ACU+SDEM+LDEM_SAR"
+]
+
 with alive_bar(4, title="Loading file lists") as bar:
     train_images = mh.load_file_list("flood_train_data.csv")
     bar()
@@ -35,7 +50,7 @@ for feature_space in feature_spaces:
         bar.title = feature_space
         x_features = Feature.getMany([feature_space])
         bar()
-        cache_path = f"./data_cache/{feature_space}.npz"
+        cache_path = f"../data_cache/{feature_space}.npz"
         # load
         train_x, train_y, train_mask = mh.generate_dataset(train_images, x_features)
         val_x, val_y, val_mask = mh.generate_dataset(valid_images, x_features)

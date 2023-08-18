@@ -6,8 +6,8 @@ DATA_PATH = "../src/downloaded-data/"
 
 import numpy as np
 from skimage.color import rgb2hsv
-
-
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+import richdem as rd
 class Feature:
     dict = {}
 
@@ -194,4 +194,49 @@ CompositeFeature(
 CompositeFeature(
     name="SAR_HSV(O3)+cAWEI+cNDWI",
     accessor=lambda r: (r("SAR"), r("HSV(O3)"), r("cAWEI+cNDWI")),
+)
+CompositeFeature(
+    name="DEM_SAR_HSV(O3)+cAWEI+cNDWI",
+    accessor=lambda r: (r("DEM"), r("SAR_HSV(O3)+cAWEI+cNDWI")),
+)
+CompositeFeature(
+    name="LDEM_SAR_HSV(O3)+cAWEI+cNDWI",
+    accessor=lambda r: (r("LDEM"), r("SAR_HSV(O3)+cAWEI+cNDWI")),
+)
+CompositeFeature(
+    name="DEM_SAR",
+    accessor=lambda r: (r("DEM"), r("SAR")),
+)
+CompositeFeature(
+    name="SDEM+LDEM_SAR",
+    accessor=lambda r: (r("SDEM"), r("LDEM"), r("SAR")),
+)
+CompositeFeature(
+    name="ACU+SDEM+LDEM_SAR",
+    accessor=lambda r: (r("ACU"), r("SDEM"), r("LDEM"), r("SAR")),
+)
+CompositeFeature(
+    name="LDEM",
+    accessor=lambda r: MinMaxScaler().fit_transform(r("DEM")),
+)
+
+def slope(r):
+    dem = rd.rdarray(r('DEM'), no_data=-9999)
+    rd.FillDepressions(dem, epsilon=True, in_place=True)
+
+    slope = rd.TerrainAttribute(dem, attrib='slope_riserun')
+    return np.array(slope)
+def accumulation(r):
+    dem = rd.rdarray(r('DEM'), no_data=-9999)
+    rd.FillDepressions(dem, epsilon=True, in_place=True)
+    accum_d8 = rd.FlowAccumulation(dem, method='D8')
+    return np.array(accum_d8)
+
+CompositeFeature(
+    name="SDEM",
+    accessor=slope
+)
+CompositeFeature(
+    name="ACU",
+    accessor=accumulation
 )

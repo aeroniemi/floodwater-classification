@@ -10,7 +10,7 @@ import functools
 
 from skimage.transform import resize
 import numpy as np
-from colored import fore, stylize
+# from colored import fore, stylize
 from feature_spaces import *
 from osgeo import gdal
 from skimage.io import imread
@@ -24,8 +24,8 @@ import optuna
 # ===========================================================================
 #                            CLI Colours
 # ===========================================================================
-primary: str = f"{fore('cyan')}"
-error: str = f"{fore('red')}"
+# primary: str = f"{fore('cyan')}"
+# error: str = f"{fore('red')}"
 
 # ===========================================================================
 #                            User editable settings
@@ -38,15 +38,15 @@ sources_x = [
 sources_y = [
     ("Label", "./label/", "LabelHand"),
 ]
-data_path = "../src/downloaded-data/"
-output_path = "./output"
+data_path = "../downloaded_data/"
+output_path = "../model_outputs"
 
 
 # ===========================================================================
 #                            Functions
 # ===========================================================================
 def load_file_list(path: str):
-    with open(path, "r") as file:
+    with open(os.path.join(data_path, path), "r") as file:
         data = file.read()
         return [i for i in data.split("\n") if i]
 
@@ -67,7 +67,7 @@ def write_geotiff(path: str, arr, in_ds: gdal.Dataset):
         file = open(path, "w")
         file.close()
     except OSError:
-        print(stylize(f"Cannot access {path}", error))
+        # print(stylize(f"Cannot access {path}", error))
         raise SystemError
 
     if arr.dtype == np.float32:
@@ -206,11 +206,11 @@ def filterPaths(folder: str, filter: str):
 
 
 def sigint_handler(signal, frame):
-    print(stylize("User interrupted operations", error))
+    # print(stylize("User interrupted operations", error))
     sys.exit(10)
 
 
-signal.signal(signal.SIGINT, sigint_handler)
+# signal.signal(signal.SIGINT, sigint_handler)
 
 
 def partial_fit(
@@ -349,7 +349,8 @@ def study_output(study: optuna.Study, frozentrial: optuna.trial.FrozenTrial):
 
 
 def generate_mask(fx, fy):
-    missing_fy = np.any(fy == -1, axis=1)
+    # print("generate_mask", fx.shape, fy.shape)
+    missing_fy = np.any(fy == -1, axis=2)
     missing_fx = np.any(np.isnan(fx), axis=2)  # np.any(np.isnan(fx), axis=1)
     mask = np.logical_or(missing_fx, missing_fy)
     return mask
@@ -358,9 +359,12 @@ def generate_mask(fx, fy):
 def apply_mask(mask, fx=None, fy=None):
     output_x = []
     output_y = []
+    # print("apply_mask", fx.shape)  # , #fy.shape)
     for img in range(mask.shape[0]):
         if fx is not None:
-            output_x.append(np.delete(fx[img, :, :], mask[img, :], axis=0))
+            oa = np.delete(fx[img, :, :], mask[img, :], axis=0)
+            # print("FXOA", oa.shape, mask[img, :30])
+            output_x.append(oa)
         if fy is not None:
             output_y.append(np.delete(fy[img, :, :], mask[img, :], axis=0))
     output_x = np.array(output_x, dtype="object")
@@ -374,7 +378,7 @@ def apply_mask(mask, fx=None, fy=None):
 
 
 def load_dataset(feature_space):
-    path = f"./data_cache/{feature_space}.npz"
+    path = f"../data_cache/{feature_space}.npz"
     data = np.load(path)
     return data
 
