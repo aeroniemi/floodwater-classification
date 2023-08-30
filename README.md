@@ -1,11 +1,64 @@
-# On the Importance of Feature Representation for Flood Mapping using Classical Machine Learning Approaches
+# Floodwater Classification with Digital Elevation Models and Sen1Floods11
 
-Climate change has increased the severity and frequency of weather disasters all around the world so that efforts to aid disaster management activities and recovery operations are of high value. Flood inundation mapping based on earth observation data can help in this context, by providing cheap and accurate maps depicting the area affected by a flood event to emergency-relief units in near-real-time. Modern deep neural network architectures require vast amounts of labeled data for training and whilst a large amount of unlabeled data is available, accurately labeling this data is a time-consuming and expensive task.
+This repository contains the code associated with my Data Science MSc dissertaton (2023). 
+Parts of the code are adapted from the methods used by Iselborn, et al. although no code is copied from this source in the current version. Their code can be found [here](https://github.com/DFKI-Earth-And-Space-Applications/Flood_Mapping_Feature_Space_Importance). Previously this project was aimed as a fork of their code with added features. The forked version can be found by looking back at the commit history. 
 
-Building upon the recent development of the Sen1Floods11 dataset, which provides a limited amount of hand-labeled high-quality training data, this paper evaluates the potential of five traditional machine learning approaches such as gradient boosted decision trees, support vector machines or quadratic discriminant analysis for leveraging this data source. By performing a grid-search-based hyperparameter optimization on 23 feature spaces we can show that all considered classifiers are capable of outperforming the current state-of-the-art neural network-based approaches in terms of total IoU on their best-performing feature spaces, despite our approaches being trained only on the small amount of hand labeled optical and SAR data available in this dataset for performing pixel-wise flood inundation mapping. We show that with total and mean IoU values of 0.8751 and 0.7031 compared to 0.70 and 0.5873 as the previous best-reported results, a simple gradient boosting classifier can significantly improve over the current state-of-the-art neural network based approaches on the Sen1Floods11 test set.
+## Requirements
+This project depends on:
+- v1.1 of Sen1Floods11
+- Python (>3.10)
+- Conda
+- A wide array of Python packages
 
-Furthermore, an analysis of the regional distribution of the Sen1Floods11 dataset reveals a problem of spatial imbalance. We show that traditional machine learning models can learn this bias and argue that modified metric evaluations are required to counter artifacts due to spatial imbalance. Lastly, a qualitative analysis shows that this pixel-wise classifier provides highly-precise surface water classifications indicating that a good choice of a feature space and pixel-wise classification can generate high-quality flood maps using optical and SAR data. To facilitate future use of the created feature spaces and the gradient boosting model, we make our code publicly available in this repository.
+## Usage
+### Downloading the data
+You can download the Sen1Floods11 dataset from a AWS S3 bucket. Detailled(ish) instructions for how to do this are available [here](https://github.com/DFKI-Earth-And-Space-Applications/Flood_Mapping_Feature_Space_Importance/blob/main/src/sen1floods11/README.md)
 
-## Results
+### File/folder structure
+Importantly, you must have the following file structure once downloaded:
 
-You can find a pre-print of our work, which has been submitted to Remote Sensing of Enviornment, on [arXiv](https://arxiv.org/abs/2303.00691).
+./code/ - contains the code in this repository
+./downloaded_data/ - contains the sen1floods11 data
+
+Inside the latter folder you should have:
+
+./downloaded_data/label/
+./downloaded_data/S1Hand/
+./downloaded_data/S1Weak/
+./downloaded_data/S1WeakLabel/
+./downloaded_data/S2Hand/
+./downloaded_data/S2Weak/
+./downloaded_data/S2WeakLabel/
+./downloaded_data/split/
+./downloaded_data/flood_bolivia_data.csv
+./downloaded_data/flood_test_data.csv
+./downloaded_data/flood_train_data.csv
+./downloaded_data/flood_val_data.csv
+
+The CSV files contain lists of images for each of the train/test/val/bolivia splits, and must be named as above
+
+Additionally, you must create the following folders:
+
+./data_cache/ - contains the cached npz files with feature spaces
+./metrics_outputs/ - contains the output file for metrics.py
+./model_outputs/ - contains npz files with model outputs
+./output_images/ - contains images produced by the image export tasks
+
+### Creating feature space caches
+Before training a model you need to create a feature space cache. This is a file that contains the data for that feature space transformed arrays that are easy and quick to import to python. 
+``python ./generate_dataset.py "[FEATURE_SPACE]"``
+
+### Training a model
+``python ./train_models.py [FEATURE_SPACE] [MODEL]``
+
+Alternatively the feature space can be made at the same time:
+
+``python ./gen_and_train.py [FEATURE_SPACE] [MODEL]``
+
+### Create metrics file
+Metrics can be exported for all models run at once by running:
+``python ./metrics.py``
+
+## The Report
+Detailled definitions of how this was used for the project can be found in the report, which will be linked here after submission.
+
