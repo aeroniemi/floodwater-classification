@@ -130,22 +130,27 @@ def generate_feature_stack(
 ):
     dem, s1, s2, lab, meta = load_image(image_name)
     feature_stack_x = []
+    feature_stack_unscaled_x = []
     feature_stack_y = []
 
-    def extract(feature):
-        if type(feature) == np.ndarray:  # it's a band
+    def extract(l, feature):
+        if feature is None:
+            return
+        elif type(feature) == np.ndarray:  # it's a band
             # print(feature.shape)
-            feature_stack_x.append(feature.ravel())
+            l.append(feature.ravel())
         else:
-            return [extract(f) for f in feature]
+            return [extract(l, f) for f in feature]
 
     for feature in x_features:
         f = feature.access(dem, s1, s2, lab)
-        extract(f)
+        fu = feature.access_unscaled(dem, s1, s2, lab)
+        extract(feature_stack_x, f)
+        extract(feature_stack_unscaled_x, fu)
     for feature in y_features:
         feature_stack_y.append(feature.access(dem, s1, s2, lab).ravel())
     # print(list(map(lambda x: x.shape, feature_stack_y)))
-    return np.asarray(feature_stack_x).T, np.asarray(feature_stack_y).T, meta
+    return np.asarray(feature_stack_x).T,np.asarray(feature_stack_unscaled_x).T, np.asarray(feature_stack_y).T, meta
 
 
 def handleNaN(fx, fy):
@@ -205,124 +210,22 @@ def filterPaths(folder: str, filter: str):
     return pathsToTitle(glob.glob(f"{folder}{filter}.tif"))
 
 
-def sigint_handler(signal, frame):
-    # print(stylize("User interrupted operations", error))
-    sys.exit(10)
-
-
-# signal.signal(signal.SIGINT, sigint_handler)
-
-
-def partial_fit(
-    classifier: ClassifierMixin, classes: list, image: str, x_features: list
-):
-    feature_stack_x, feature_stack_y, meta = generate_feature_stack(image, x_features)
-    feature_stack_x_filtered, feature_stack_y_filtered, mask = handleNaN(
-        feature_stack_x, feature_stack_y
-    )
-    classifier.partial_fit(feature_stack_x_filtered, feature_stack_y_filtered, classes)
-
-
-def full_fit(classifier: ClassifierMixin, images: list, x_features: list):
-    feature_stack_all_x = []
-    feature_stack_all_y = []
-    for image in (bar := alive_it(images, title="Loading Training Data")):
-        bar.text(image)
-        feature_stack_x, feature_stack_y, meta = generate_feature_stack(
-            image, x_features
-        )
-        feature_stack_x_filtered, feature_stack_y_filtered, _ = handleNaN(
-            feature_stack_x, feature_stack_y
-        )
-        feature_stack_all_x.append(feature_stack_x_filtered)
-        feature_stack_all_y.append(feature_stack_y_filtered)
-    with alive_bar(3, title="Fitting") as bar:
-        bar.text("Concat X")
-        arr_x = np.concatenate(feature_stack_all_x)
-        bar()
-        bar.text("Concat y")
-        arr_y = np.concatenate(feature_stack_all_y)
-        bar()
-        bar.text("Fit Classifier")
-        classifier.fit(arr_x, arr_y)
-        bar()
-        bar.text("Complete")
-
-
 def generate_dataset(images: list, x_features: list):
     feature_stack_all_x = []
+    feature_stack_all_unscaled_x = []
     feature_stack_all_y = []
     for image in images:
-        feature_stack_x, feature_stack_y, meta = generate_feature_stack(
+        feature_stack_x, feature_stack_unscaled_x, feature_stack_y, meta = generate_feature_stack(
             image, x_features
         )
         feature_stack_all_x.append(feature_stack_x)
+        feature_stack_all_unscaled_x.append(feature_stack_unscaled_x)
         feature_stack_all_y.append(feature_stack_y)
     feature_stack_all_x = np.array(feature_stack_all_x)
+    feature_stack_all_unscaled_x = np.array(feature_stack_all_unscaled_x)
     feature_stack_all_y = np.array(feature_stack_all_y)
     mask = generate_mask(feature_stack_all_x, feature_stack_all_y)
-    return feature_stack_all_x, feature_stack_all_y, mask
-
-
-def create_gbm_dataset(images: list, x_features: list):
-    feature_stack_all_x = []
-    feature_stack_all_y = []
-    for image in (bar := alive_it(images, title="Loading Training Data")):
-        bar.text(image)
-        feature_stack_x, feature_stack_y, meta = generate_feature_stack(
-            image, x_features
-        )
-        feature_stack_x_filtered, feature_stack_y_filtered, _ = handleNaN(
-            feature_stack_x, feature_stack_y
-        )
-        feature_stack_all_x.append(feature_stack_x_filtered)
-        feature_stack_all_y.append(feature_stack_y_filtered)
-    arr_x = np.concatenate(feature_stack_all_x)
-    arr_y = np.concatenate(feature_stack_all_y)
-    dataset = lightgbm.Dataset(arr_x, label=arr_y)
-    return dataset, x_features
-
-
-def predict(classifier: ClassifierMixin, image: str, x_features: list):
-    feature_stack_x, feature_stack_y, meta = generate_feature_stack(image, x_features)
-    feature_stack_x_filtered, feature_stack_y_filtered, mask = handleNaN(
-        feature_stack_x, feature_stack_y
-    )
-    if feature_stack_x_filtered.shape[0] == 0:
-        raise Exception(f"No valid label, cannot predict: {image}")
-    with config_context(assume_finite=True):
-        predicted = classifier.predict(feature_stack_x_filtered)
-    built = rebuildShape(predicted, mask)
-    return built, feature_stack_y, meta
-
-
-def calc_mean_iou(classifier, images, x_features):
-    ious = []
-    acc = []
-    for image in (bar := alive_it(images, title="Predicting")):
-        bar.text(image)
-        try:
-            img, label, meta = predict(classifier, image, x_features)
-            iour, accuracyr = iou(img, label)
-            ious.append(iour)
-            acc.append(accuracyr)
-        except Exception:
-            pass
-    return mean(ious), mean(acc)
-
-
-def calc_mean_iou_stack(classifier, x, y):
-    ious = []
-    acc = []
-    for i in (bar := alive_it(range(len(x)), title="Predicting")):
-        try:
-            img = classifier.predict(x[i])
-            iour, accuracyr = iou(img, y[i])
-            ious.append(iour)
-            acc.append(accuracyr)
-        except Exception:
-            pass
-    return mean(ious), mean(acc)
+    return feature_stack_all_x, feature_stack_all_unscaled_x, feature_stack_all_y, mask
 
 
 def predict_to_file(classifier, trial: optuna.trial.Trial, dataset):

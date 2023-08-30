@@ -6,8 +6,35 @@ import sklearn.metrics as skm
 import statistics
 import os
 import glob
-splits = ["val", "test", "bolivia"]
+splits = ["test", "bolivia"]
 # splits = ["train", "val", "test", "bolivia"]
+
+def assign_metric_to_region(regions, i, image_split_list, value):
+    image = image_split_list[i]
+    region = re.search(r"^(.+)_", image).group(1)
+    if not region in regions:
+        regions[region] = []
+    regions[region].append(value)
+
+
+
+def calc_regional_iou(output, target, split):
+    regions = {}
+    with open(f"../downloaded_data/flood_{split}_data.csv", 'r') as file:
+        image_split_list = file.readlines()
+    for i, image in enumerate(zip(output, target)):
+        value = calc_iou(*image)
+        assign_metric_to_region(regions, i, image_split_list, value)
+    return regions
+def calc_regional_wet(output, target, split):
+    regions = {}
+    with open(f"../downloaded_data/flood_{split}_data.csv", 'r') as file:
+        image_split_list = file.readlines()
+    for i, image in enumerate(zip(output, target)):
+        value = np.count_nonzero(image[1]==1)
+        assign_metric_to_region(regions, i, image_split_list, value)
+    return regions
+
 
 
 def calculate_metrics(model, feature_space, run, split, output_data, target_data):
@@ -17,7 +44,7 @@ def calculate_metrics(model, feature_space, run, split, output_data, target_data
     # print(output.shape)
     # print(list(map(lambda x: x.shape, output)))
     output_1d = np.concatenate(output)
-    target_1d = np.concatenate(target)
+    target_1d = np.concatenate( target)
     return {
         "model": model,
         "feature_space": feature_space,
@@ -35,6 +62,8 @@ def calculate_metrics(model, feature_space, run, split, output_data, target_data
         "total_recall_flooded": skm.recall_score(target_1d, output_1d, pos_label=1),
         "total_recall_dry": skm.recall_score(target_1d, output_1d, pos_label=0),
         "total_f1_score": skm.f1_score(target_1d, output_1d),
+        "regional_iou": calc_regional_iou(output, target, split),
+        "regional_wet": calc_regional_wet(output, target, split)
     }
 metrics_path = "../metrics_outputs/metrics.output"
 
