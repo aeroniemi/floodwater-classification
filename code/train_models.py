@@ -1,3 +1,9 @@
+#----------------------------------------------------------------------------
+# Train models
+# Methods required to train each type of model used in the report
+# @aeroniemi / Alex Beavil 2023
+#----------------------------------------------------------------------------
+
 import methods as mh
 import numpy as np
 from alive_progress import alive_it, alive_bar

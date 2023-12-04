@@ -1,3 +1,9 @@
+#----------------------------------------------------------------------------
+# Generate Metrics
+# Script to create a sheet of a variety of metrics for assessing model perf 
+# @aeroniemi / Alex Beavil 2023
+#----------------------------------------------------------------------------
+
 import numpy as np
 import re
 import pandas as pd

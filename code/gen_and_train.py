@@ -1,3 +1,9 @@
+#----------------------------------------------------------------------------
+# Generate dataset and train models
+# Script that combines generation and training
+# @aeroniemi / Alex Beavil 2023
+#----------------------------------------------------------------------------
+
 import argparse
 import subprocess
 parser = argparse.ArgumentParser(description='Generate feature space and then run a model')

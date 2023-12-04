@@ -1,3 +1,9 @@
+#----------------------------------------------------------------------------
+# Feature Spaces
+# Handles the generation and usage of each of the features used by the models
+# @aeroniemi / Alex Beavil 2023
+#----------------------------------------------------------------------------
+
 IMAGE_DEM = ("./dem/", "dem", "dem")
 IMAGE_S1 = ("./S1Hand/", "S1Hand", "s1")
 IMAGE_S2 = ("./S2Hand/", "S2Hand", "s2")
@@ -9,7 +15,13 @@ from skimage.color import rgb2hsv
 from skimage.transform import rescale, resize
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 # import richdem as rd
+
+
+
 class Feature:
+    '''
+    A base model feature
+    '''    
     dict = {}
 
     def __init__(self, name: str, local_rescale=True):
@@ -79,6 +91,9 @@ class Feature:
 
 
 class RawFeature(Feature):
+    '''
+    An individual image band as a feature
+    '''
     def __init__(self, name: str, image: tuple, band: int):
         super().__init__(name)
         self.image = image
@@ -104,6 +119,9 @@ class RawFeature(Feature):
 
 
 class CompositeFeature(Feature):
+    '''
+    A composite feature derived from other features
+    '''
     def __init__(self, name: str, accessor: callable=None, unscaled_accessor: callable=None):
         super().__init__(name)
         self.accessor = accessor
@@ -120,11 +138,16 @@ class CompositeFeature(Feature):
         return None
 
 
+## Create raw features from image bands
+
+### from DEM layers
 RawFeature(name="DEM", image=IMAGE_DEM, band=0)
 
+### from S1 (SAR) layers
 RawFeature(name="SAR_VV", image=IMAGE_S1, band=0)
 RawFeature(name="SAR_VH", image=IMAGE_S1, band=1)
 
+### from S2 (optical) layers
 RawFeature(name="OPT_B", image=IMAGE_S2, band=1)
 RawFeature(name="OPT_G", image=IMAGE_S2, band=2)
 RawFeature(name="OPT_R", image=IMAGE_S2, band=3)
@@ -137,16 +160,16 @@ RawFeature(name="OPT_SWIR1", image=IMAGE_S2, band=11)
 RawFeature(name="OPT_SWIR2", image=IMAGE_S2, band=12)
 RawFeature(name="QC", image=IMAGE_LAB, band=0)
 
+## Create single composite features
 CompositeFeature(
     name="compositeTest",
     accessor=lambda r: print(*r("OPT_G")),
 )
 CompositeFeature(
-    name="NDWI",
+    name="NDWI", 
     accessor=lambda r: (r("OPT_G") - r("OPT_N"))
     + 1e-20 / (r("OPT_G") + r("OPT_N") + 1e-20),
 )
-
 
 def hsvrgb(r):
     hsv = rgb2hsv(np.array(r("RGB")).T)
@@ -200,6 +223,7 @@ CompositeFeature(
     accessor=lambda r: (r("SAR"), r("SAR_VV")+0.000001/r("SAR_VH")+0.000001)
 )
 
+## Create feature spaces
 CompositeFeature(name="cAWEI", accessor=lambda r: (r("AWEI"), r("AWEISH")))
 CompositeFeature(name="cAWEI+SAVI+WRI", accessor=lambda r: (r("cAWEI"), r("SAVI"), r("WRI")))
 CompositeFeature(name="cAWEI+SAVI", accessor=lambda r: (r("cAWEI"), r("SAVI")))

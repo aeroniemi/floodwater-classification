@@ -1,3 +1,9 @@
+#----------------------------------------------------------------------------
+# Generate dataset
+# Script to create datasets as groups of numpy arrays, to speed up model runs
+# @aeroniemi / Alex Beavil 2023
+#----------------------------------------------------------------------------
+
 import methods as mh
 import numpy as np
 from alive_progress import alive_it, alive_bar
@@ -19,7 +25,9 @@ from datetime import datetime
 import sys
 from sklearn.feature_extraction.image import extract_patches_2d
 
-feature_spaces = [
+# set the feature spaces that you want to create the dataset for
+# a slightly easier way to pre-generate multiple feature spaces
+feature_spaces = [ 
     # "SAR",
     # "SAR_HSV(O3)",
     # "SAR_cAWEI+cNDWI",
