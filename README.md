@@ -1,6 +1,7 @@
 # Floodwater Classification with Digital Elevation Models and Sen1Floods11
 
-This repository contains the code associated with my Data Science MSc dissertaton (2023). 
+For my Data Science MSc project at the University of Bristol I chose to combine my knowledge of the issues facing hydrological models from my geography degree with some machine learning techniques. Identifying flooded land from satellite imagery has much potential to improve real time understanding of flood events, as well as to provide better constraints for numerical models. My final report can be found [here](https://github.com/aeroniemi/floodwater-classification/blob/a58d17f0f7bfecfdd6e23139ee8db5bdf95982d8/report.pdf). 
+
 Parts of the code are adapted from the methods used by Iselborn, et al. although no code is copied from this source in the current version. Their code can be found [here](https://github.com/DFKI-Earth-And-Space-Applications/Flood_Mapping_Feature_Space_Importance). Previously this project was aimed as a fork of their code with added features. The forked version can be found by looking back at the commit history. 
 
 ## Requirements
